@@ -1,33 +1,39 @@
 pipeline {
     agent any
 
+    environment {
+        KUBECONFIG_CREDENTIALS_ID = 'kubeconfig'
+    }
+
     stages {
-        stage('Build') {
+        stage('Checkout') {
             steps {
-                script {
-                    // Construir projeto JSF
-                    dir('path-to-jsf-project') {
-                        sh 'mvn clean package'
-                    }
+                git branch: 'main', credentialsId: 'github', url: 'https://github.com/kaiopiterson/jsf'
+            }
+        }
+        stage('Build JSF App') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t kaiopiterson/jsf-app .'
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([string(credentialsId: 'dockerhub', variable: 'DOCKERHUB_PASSWORD')]) {
+                    sh 'docker login -u kaiopiterson -p $DOCKERHUB_PASSWORD'
+                    sh 'docker tag kaiopiterson/jsf-app kaiopiterson/jsf-app:latest'
+                    sh 'docker push kaiopiterson/jsf-app:latest'
                 }
             }
         }
-        stage('Build Docker Images') {
+        stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    // Construir imagem Docker para o projeto JSF
-                    dir('path-to-jsf-project') {
-                        sh 'docker build -t jsf-app .'
-						}
-                    }
-                }
-            }
-        }
-        stage('Deploy') {
-            steps {
-                script {
-                    // Executar contêiner Docker para o projeto JSF
-                    sh 'docker run -d -p 8081:8080 jsf-app'
+                withCredentials([file(credentialsId: env.KUBECONFIG_CREDENTIALS_ID, variable: 'KUBECONFIG')]) {
+                    sh 'kubectl apply -f deployment.yaml --kubeconfig=$KUBECONFIG'
                 }
             }
         }
