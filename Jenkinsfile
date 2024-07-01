@@ -23,8 +23,8 @@ pipeline {
         }
         stage('Push Docker Image') {
             steps {
-                withCredentials([string(credentialsId: 'dockerhub', variable: 'DOCKERHUB_PASSWORD')]) {
-                    sh 'docker login -u kaiopiterson -p $DOCKERHUB_PASSWORD'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                    sh 'docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD'
                     sh 'docker tag kaiopiterson/jsf-app kaiopiterson/jsf-app:latest'
                     sh 'docker push kaiopiterson/jsf-app:latest'
                 }
